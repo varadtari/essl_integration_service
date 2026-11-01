@@ -5,7 +5,7 @@ import (
 	"essl_integration_service/utils"
 )
 
-//please leave this space so that utils package gets imported first. This is needed so that env variables get loaded first!
+// .env is loaded by the env package, which every package reading configuration in init() imports.
 
 func main() {
 

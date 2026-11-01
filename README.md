@@ -12,7 +12,7 @@ Prerequisites: Go 1.26, Docker, [golang-migrate](https://github.com/golang-migra
 
 ```sh
 cp .env.example .env     # fill in API_KEY
-just db-up               # Postgres 16 on localhost:5432
+just db-up               # Postgres 16 on localhost:55432 (clear of system Postgres on 5432/5433)
 just migrate-up
 just run                 # http://localhost:8001/v1/health
 just test

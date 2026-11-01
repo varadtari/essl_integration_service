@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 
+	_ "essl_integration_service/env"
+
 	"github.com/DataDog/dd-trace-go/v2/ddtrace/tracer"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

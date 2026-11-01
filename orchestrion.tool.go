@@ -18,12 +18,12 @@ import (
 	// Do not remove.
 	_ "github.com/DataDog/orchestrion" // integration
 
-	_ "github.com/DataDog/dd-trace-go/contrib/gin-gonic/gin/v2"                            // integration
-	_ "github.com/DataDog/dd-trace-go/contrib/go.uber.org/zap/v2"                          // integration
-	_ "github.com/DataDog/dd-trace-go/contrib/jackc/pgx.v5/v2"                             // integration
-	_ "github.com/DataDog/dd-trace-go/contrib/net/http/v2"                                 // integration
-	_ "github.com/DataDog/dd-trace-go/v2/contrib/os"                                       // integration
-	_ "github.com/DataDog/dd-trace-go/v2/profiler"                                         // integration
+	_ "github.com/DataDog/dd-trace-go/contrib/gin-gonic/gin/v2"   // integration
+	_ "github.com/DataDog/dd-trace-go/contrib/go.uber.org/zap/v2" // integration
+	_ "github.com/DataDog/dd-trace-go/contrib/jackc/pgx.v5/v2"    // integration
+	_ "github.com/DataDog/dd-trace-go/contrib/net/http/v2"        // integration
+	_ "github.com/DataDog/dd-trace-go/v2/contrib/os"              // integration
+	_ "github.com/DataDog/dd-trace-go/v2/profiler"                // integration
 
 	_ "github.com/DataDog/dd-trace-go/v2/ddtrace/tracer" // actual tracer
 )

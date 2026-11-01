@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"time"
+
+	_ "essl_integration_service/env"
 )
 
 const TIME_FORMAT_STR = "2006-01-02 15:04:05 -07:00"

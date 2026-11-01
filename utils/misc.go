@@ -7,18 +7,8 @@ import (
 
 	"essl_integration_service/logger"
 
-	"github.com/joho/godotenv"
+	_ "essl_integration_service/env"
 )
-
-func init() {
-
-	if _, err := os.Stat(".env"); err == nil {
-		err = godotenv.Load(".env")
-		if err != nil {
-			panic(err)
-		}
-	}
-}
 
 func ShowServiceInfo() {
 
