@@ -1,0 +1,22 @@
+# Local Postgres for the POC. The service itself runs with `go run .` so it can be restarted
+# quickly and reached by a device on the LAN at <laptop-ip>:8001.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: najah_local
+      POSTGRES_PASSWORD: najah_local
+      POSTGRES_DB: najah_local
+      TZ: UTC
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - najah_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U najah_local -d najah_local"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  najah_pgdata:
