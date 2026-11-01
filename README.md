@@ -28,6 +28,9 @@ curl -X POST localhost:8001/internal/v1/superadmins \
   -d '{"name":"Admin","email":"admin@example.com","password":"change-me-please"}'
 ```
 
+For local development, `scripts/dev_seed.sh` creates a superadmin and a demo gym with
+throwaway credentials (listed in the script).
+
 The superadmin then onboards each gym (`POST /admin/v1/gyms`), which creates the gym, its
 owner login and the default plans.
 
