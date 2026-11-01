@@ -23,6 +23,9 @@ func init() {
 	COMMON_SERVICE_ERROR_BASE_CODE = utils.ServiceErrorBaseCode + COMMON_SERVICE_BYTE3_VALUE
 }
 
+// STATUS_CLIENT_CLOSED_REQUEST is nginx's 499: the client closed the connection first.
+const STATUS_CLIENT_CLOSED_REQUEST = 499
+
 // nowFunc is the clock services read; tests replace it to pin "today".
 var nowFunc = time.Now
 
@@ -32,6 +35,9 @@ var nowFunc = time.Now
 func fromDaoError(ctx context.Context, operation string, appError *models.ApplicationError) *models.ApiError {
 
 	switch {
+	case database.IsCanceled(appError):
+		// The client is gone and will never read this; don't record it as an internal error.
+		return utils.RenderApiErrorFromAppError(STATUS_CLIENT_CLOSED_REQUEST, appError)
 	case database.IsNotFound(appError):
 		appError.Message.AdditionalInfo = nil
 		return utils.RenderApiErrorFromAppError(http.StatusNotFound, appError)

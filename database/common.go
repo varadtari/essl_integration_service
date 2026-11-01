@@ -24,6 +24,10 @@ var ErrConflict = errors.New("conflict")
 // ErrNotFound marks a lookup that matched no row in the caller's gym.
 var ErrNotFound = errors.New("not found")
 
+// ErrCanceled marks a query cut short because the caller went away (the browser aborted the
+// request, e.g. a search that changed mid-type). It is not a server fault.
+var ErrCanceled = errors.New("canceled")
+
 // renderDaoError logs a failed query and wraps it the way every DAO in the template does,
 // tagging not-found and unique violations so the service layer can pick the HTTP status.
 func renderDaoError(ctx context.Context, errorCode int, operation string, err error, displayMsg string) *models.ApplicationError {
@@ -31,6 +35,8 @@ func renderDaoError(ctx context.Context, errorCode int, operation string, err er
 	var kind error
 	var pgErr *pgconn.PgError
 	switch {
+	case errors.Is(err, context.Canceled):
+		kind = ErrCanceled
 	case errors.Is(err, pgx.ErrNoRows), errors.Is(err, ErrNotFound):
 		kind = ErrNotFound
 	case errors.Is(err, ErrConflict):
@@ -56,6 +62,10 @@ func IsNotFound(appError *models.ApplicationError) bool {
 
 func IsConflict(appError *models.ApplicationError) bool {
 	return appError != nil && appError.Message.AdditionalInfo == ErrConflict
+}
+
+func IsCanceled(appError *models.ApplicationError) bool {
+	return appError != nil && appError.Message.AdditionalInfo == ErrCanceled
 }
 
 // withTx runs fn in a transaction, rolling back on error or panic.

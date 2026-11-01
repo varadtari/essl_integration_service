@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"time"
@@ -63,8 +64,10 @@ func LogRequest() gin.HandlerFunc {
 			requestBodyString = "{}"
 		}
 
+		// Written with a context of its own: the request's context is already canceled when the
+		// client hung up, and those are exactly the requests worth having in the log.
 		appError := database.AlDb.SaveDebugApiActivityLog(
-			c.Request.Context(),
+			context.WithoutCancel(c.Request.Context()),
 			c.GetString("requestId"),
 			requestMethod,
 			c.Request.URL.Path,
