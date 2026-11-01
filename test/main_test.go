@@ -29,6 +29,8 @@ func TestMain(m *testing.M) {
 		models.JWT_SECRET = []byte("test-secret-that-is-long-enough-for-hs256")
 	}
 	models.COOKIE_SECURE = false
+	// Test what production sends: no internal error detail.
+	models.EXPOSE_ERROR_DETAILS = false
 
 	// Tests TRUNCATE everything, so they only ever run against TEST_DB_NAME, never DB_NAME.
 	if testDbName := os.Getenv("TEST_DB_NAME"); testDbName != "" {

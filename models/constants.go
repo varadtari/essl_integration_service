@@ -36,6 +36,9 @@ var (
 
 	// COOKIE_SECURE marks the session cookie Secure. Off only for local http development.
 	COOKIE_SECURE bool
+
+	// EXPOSE_ERROR_DETAILS adds errorMessage and additionalInfo to error responses. Local only.
+	EXPOSE_ERROR_DETAILS bool
 )
 
 const DEFAULT_HTTP_CLIENT_TIMEOUT_SECONDS = 20
@@ -56,6 +59,7 @@ func init() {
 
 	JWT_SECRET = []byte(os.Getenv("JWT_SECRET"))
 	COOKIE_SECURE = os.Getenv("COOKIE_SECURE") != "false"
+	EXPOSE_ERROR_DETAILS = os.Getenv("EXPOSE_ERROR_DETAILS") == "true"
 
 }
 
