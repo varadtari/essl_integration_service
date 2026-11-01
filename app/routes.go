@@ -5,12 +5,18 @@ import (
 
 	"essl_integration_service/controllers"
 	"essl_integration_service/middleware"
+	"essl_integration_service/models"
 
 	"github.com/gin-gonic/gin"
 )
 
 var (
 	SERVICE_BASE_PATH string
+	authRoutes        *gin.RouterGroup
+	sessionRoutes     *gin.RouterGroup
+	gymRoutes         *gin.RouterGroup
+	adminRoutes       *gin.RouterGroup
+	internalRoutes    *gin.RouterGroup
 )
 
 func init() {
@@ -28,10 +34,94 @@ func SetupRoutesMiddleware() {
 	Router.Use(middleware.RequestId())
 	Router.Use(middleware.CorsMiddleware())
 
+	authRoutes = Router.Group(SERVICE_BASE_PATH + "/v1/auth")
+	authRoutes.Use(middleware.LogRequest())
+
+	// Any signed-in user, superadmins included.
+	sessionRoutes = Router.Group(SERVICE_BASE_PATH)
+	sessionRoutes.Use(middleware.LogRequest())
+	sessionRoutes.Use(middleware.AuthorizeSession(models.ROLE_SUPERADMIN, models.ROLE_OWNER, models.ROLE_STAFF))
+
+	// A gym's owner and front desk; every handler here acts on the session's gym.
+	gymRoutes = Router.Group(SERVICE_BASE_PATH)
+	gymRoutes.Use(middleware.LogRequest())
+	gymRoutes.Use(middleware.AuthorizeSession(models.ROLE_OWNER, models.ROLE_STAFF))
+
+	// The client running the platform.
+	adminRoutes = Router.Group(SERVICE_BASE_PATH + "/admin")
+	adminRoutes.Use(middleware.LogRequest())
+	adminRoutes.Use(middleware.AuthorizeSession(models.ROLE_SUPERADMIN))
+
+	internalRoutes = Router.Group(SERVICE_BASE_PATH + "/internal")
+	internalRoutes.Use(middleware.LogRequest())
+	internalRoutes.Use(middleware.AuthorizeApiKey(middleware.API_KEY))
+
 }
 
 func SetupHealthRoute() {
 
 	Router.GET(SERVICE_BASE_PATH+"/v1/health", controllers.GetHealth)
+
+}
+
+func SetupAuthRoutes() {
+
+	authRoutes.POST("/login", controllers.Login)
+	authRoutes.POST("/logout", controllers.Logout)
+
+	sessionRoutes.GET("/v1/me", controllers.GetMe)
+
+}
+
+func SetupGymRoutes() {
+
+	gymRoutes.GET("/v1/dashboard/summary", controllers.GetDashboardSummary)
+
+	gymRoutes.GET("/v1/gym", controllers.GetMyGym)
+	gymRoutes.PATCH("/v1/gym", controllers.UpdateMyGym)
+
+	gymRoutes.GET("/v1/plans", controllers.ListPlans)
+	gymRoutes.POST("/v1/plans", controllers.CreatePlan)
+	gymRoutes.PATCH("/v1/plans/:planId", controllers.UpdatePlan)
+
+	gymRoutes.GET("/v1/members", controllers.ListMembers)
+	gymRoutes.POST("/v1/members", controllers.CreateMember)
+	gymRoutes.GET("/v1/members/:memberId", controllers.GetMember)
+	gymRoutes.PATCH("/v1/members/:memberId", controllers.UpdateMember)
+	gymRoutes.DELETE("/v1/members/:memberId", controllers.DeleteMember)
+	gymRoutes.POST("/v1/members/:memberId/renew", controllers.RenewMember)
+
+	gymRoutes.GET("/v1/overdue", controllers.ListOverdue)
+	gymRoutes.GET("/v1/payments", controllers.ListPayments)
+
+	gymRoutes.GET("/v1/staff", controllers.ListStaff)
+	gymRoutes.POST("/v1/staff", controllers.CreateStaff)
+	gymRoutes.PATCH("/v1/staff/:userId", controllers.SetStaffActive)
+
+}
+
+func SetupAdminRoutes() {
+
+	adminRoutes.GET("/v1/gyms", controllers.AdminListGyms)
+	adminRoutes.POST("/v1/gyms", controllers.AdminCreateGym)
+	adminRoutes.PATCH("/v1/gyms/:gymId", controllers.AdminUpdateGym)
+
+}
+
+func SetupInternalRoutes() {
+
+	internalRoutes.POST("/v1/superadmins", controllers.CreateSuperadmin)
+
+}
+
+// SetupAllRoutes wires every route; StartApp and the HTTP tests share it.
+func SetupAllRoutes() {
+
+	SetupRoutesMiddleware()
+	SetupHealthRoute()
+	SetupAuthRoutes()
+	SetupGymRoutes()
+	SetupAdminRoutes()
+	SetupInternalRoutes()
 
 }

@@ -16,6 +16,7 @@ import (
 
 	"essl_integration_service/database"
 	"essl_integration_service/logger"
+	"essl_integration_service/models"
 )
 
 var (
@@ -43,12 +44,15 @@ func StartApp() {
 		database.CloseDatabasePool()
 	}()
 
+	if len(models.JWT_SECRET) < models.MIN_JWT_SECRET_BYTES {
+		panic("JWT_SECRET must be set to at least 32 bytes")
+	}
+
 	if err := database.InitializeDatabasePool(); err != nil {
 		panic(err)
 	}
 
-	SetupRoutesMiddleware()
-	SetupHealthRoute()
+	SetupAllRoutes()
 
 	server := &http.Server{
 		Addr:              ":" + os.Getenv("SERVER_PORT"),

@@ -56,3 +56,8 @@ func AuthorizeApiKey(keyType API_KEY_TYPE) gin.HandlerFunc {
 
 	}
 }
+
+// SetApiKeyForTests replaces a configured key. Only the HTTP tests call it.
+func SetApiKeyForTests(keyType API_KEY_TYPE, key string) {
+	apiKeys[keyType] = key
+}

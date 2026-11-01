@@ -17,8 +17,6 @@ func TestGetHealthNoErrors(t *testing.T) {
 
 	assert := assert.New(t)
 
-	app.SetupHealthRoute()
-
 	resWriter := httptest.NewRecorder()
 
 	req, _ := http.NewRequest("GET", app.SERVICE_BASE_PATH+"/v1/health", nil)

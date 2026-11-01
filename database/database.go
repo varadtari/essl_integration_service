@@ -17,7 +17,7 @@ func InitializeDatabasePool() error {
 
 	var err error
 
-	databaseUrl := buildDatabaseUrl()
+	databaseUrl := BuildDatabaseUrl()
 
 	dbconfig, err := pgxpool.ParseConfig(databaseUrl)
 	if err != nil {
@@ -38,10 +38,10 @@ func InitializeDatabasePool() error {
 
 }
 
-// buildDatabaseUrl differs from the template in one way: sslmode comes from the environment.
+// BuildDatabaseUrl (exported for the integration tests) differs from the template in one way: sslmode comes from the environment.
 // Hosted Postgres needs require + a root cert, while the local docker Postgres used for the
 // POC has no TLS at all, and hardcoding either one breaks the other.
-func buildDatabaseUrl() string {
+func BuildDatabaseUrl() string {
 
 	sslMode := os.Getenv("DB_SSL_MODE")
 	if sslMode == "" {

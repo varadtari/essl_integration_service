@@ -29,6 +29,13 @@ var (
 	ENV                         string
 	WEB_ORIGIN                  string
 	HTTP_CLIENT_TIMEOUT_SECONDS time.Duration
+
+	// JWT_SECRET signs portal session tokens. StartApp refuses to run with a short one, so a
+	// missing secret is a failed deploy rather than sessions anyone can forge.
+	JWT_SECRET []byte
+
+	// COOKIE_SECURE marks the session cookie Secure. Off only for local http development.
+	COOKIE_SECURE bool
 )
 
 const DEFAULT_HTTP_CLIENT_TIMEOUT_SECONDS = 20
@@ -47,7 +54,37 @@ func init() {
 	}
 	HTTP_CLIENT_TIMEOUT_SECONDS = time.Duration(timeoutSecs)
 
+	JWT_SECRET = []byte(os.Getenv("JWT_SECRET"))
+	COOKIE_SECURE = os.Getenv("COOKIE_SECURE") != "false"
+
 }
+
+const MIN_JWT_SECRET_BYTES = 32
+
+const (
+	SESSION_COOKIE_NAME = "najah_session"
+	SESSION_TTL         = 7 * 24 * time.Hour
+)
+
+const (
+	ROLE_SUPERADMIN = "superadmin"
+	ROLE_OWNER      = "owner"
+	ROLE_STAFF      = "staff"
+)
+
+const (
+	PAYMENT_METHOD_CASH = "cash"
+	PAYMENT_METHOD_UPI  = "upi"
+)
+
+const (
+	MEMBER_STATUS_ACTIVE  = "active"
+	MEMBER_STATUS_OVERDUE = "overdue"
+)
+
+const DEFAULT_GYM_TIMEZONE = "Asia/Kolkata"
+
+const DATE_FORMAT = "2006-01-02"
 
 type contextKey string
 
