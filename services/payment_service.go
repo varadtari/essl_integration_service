@@ -71,6 +71,11 @@ func GetDashboardSummary(ctx context.Context, session models.Session) (*models.A
 		return fromDaoError(ctx, "GetDashboardSummary", appError), nil
 	}
 
+	checkinsToday, apiError := countCheckinsToday(ctx, gymId, gym.Timezone)
+	if apiError != nil {
+		return apiError, nil
+	}
+
 	recent, appError := database.PayDb.RecentPayments(ctx, gymId, RECENT_PAYMENTS_LIMIT)
 	if appError != nil {
 		return fromDaoError(ctx, "GetDashboardSummary", appError), nil
@@ -80,6 +85,7 @@ func GetDashboardSummary(ctx context.Context, session models.Session) (*models.A
 		Today:                 formatDate(today),
 		ActiveMembers:         active,
 		OverdueMembers:        overdue,
+		CheckinsToday:         checkinsToday,
 		RevenueThisMonthPaise: revenue,
 		RecentPayments:        recent,
 	}

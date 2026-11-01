@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,11 +32,29 @@ func init() {
 
 	Router = gin.New()
 
+	// Only trust X-Forwarded-For from the reverse proxy in front of the service. Gin trusts every
+	// peer by default, which would let a client fake its IP, and device IPs are recorded.
+	if err := Router.SetTrustedProxies(trustedProxies()); err != nil {
+		panic(err)
+	}
+
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		v.RegisterValidation("inttype", validateIntType)
 
 	}
 
+}
+
+// trustedProxies reads TRUSTED_PROXIES, a comma-separated list of proxy IPs or CIDRs. Unset
+// means none: the TCP peer is the client.
+func trustedProxies() []string {
+	var proxies []string
+	for _, p := range strings.Split(os.Getenv("TRUSTED_PROXIES"), ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			proxies = append(proxies, p)
+		}
+	}
+	return proxies
 }
 
 func StartApp() {

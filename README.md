@@ -61,10 +61,13 @@ dates are `YYYY-MM-DD` calendar days in the gym's timezone.
 | `/v1/auth` | anyone | `POST /login`, `POST /logout` |
 | `/v1/me` | any session | `GET` |
 | gym | owner, staff | `GET /v1/dashboard/summary`, `GET/PATCH /v1/gym`, `GET/POST /v1/plans`, `PATCH /v1/plans/:planId`, `GET/POST /v1/members`, `GET/PATCH/DELETE /v1/members/:memberId`, `POST /v1/members/:memberId/renew`, `GET /v1/overdue`, `GET /v1/payments?month=YYYY-MM`, `GET/POST /v1/staff`, `PATCH /v1/staff/:userId` |
+| gym (devices) | owner, staff | `GET/POST /v1/devices`, `GET/PATCH/DELETE /v1/devices/:deviceId`, `GET/POST /v1/devices/:deviceId/commands`, `GET /v1/checkins?from&to&memberId&deviceId&verdict&limit&before` |
+| `/iclock` | devices (by registered `SN`) | ADMS: see [docs/adms-protocol.md](docs/adms-protocol.md) |
 | `/admin` | superadmin | `GET/POST /v1/gyms`, `PATCH /v1/gyms/:gymId` |
 | `/internal` | `x-api-key` | `POST /v1/superadmins` |
 
-Owner-only within the gym group: gym settings, plans, staff, deleting members. The gym a
+Owner-only within the gym group: gym settings, plans, staff, deleting members, adding and
+removing devices, and device commands other than opening the door. The gym a
 request acts on always comes from the session, never from the URL or body.
 
 ## Migrations

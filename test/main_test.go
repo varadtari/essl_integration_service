@@ -59,7 +59,7 @@ func requireDb(t *testing.T) {
 	if testDb == nil {
 		t.Skip("TEST_DB_NAME not set or test database unreachable")
 	}
-	_, err := testDb.Exec(context.Background(), `TRUNCATE payments, memberships, members, plans, users, gyms, internal_errors, debug_activity_logs_api RESTART IDENTITY CASCADE`)
+	_, err := testDb.Exec(context.Background(), `TRUNCATE device_raw_messages, access_events, device_commands, devices, payments, memberships, members, plans, users, gyms, internal_errors, debug_activity_logs_api RESTART IDENTITY CASCADE`)
 	if err != nil {
 		t.Fatalf("truncate: %v", err)
 	}

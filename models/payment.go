@@ -26,6 +26,7 @@ type DashboardSummary struct {
 	Today                 string    `json:"today"`
 	ActiveMembers         int       `json:"activeMembers"`
 	OverdueMembers        int       `json:"overdueMembers"`
+	CheckinsToday         int       `json:"checkinsToday"`
 	RevenueThisMonthPaise int64     `json:"revenueThisMonthPaise"`
 	RecentPayments        []Payment `json:"recentPayments"`
 }

@@ -17,6 +17,7 @@ var (
 	gymRoutes         *gin.RouterGroup
 	adminRoutes       *gin.RouterGroup
 	internalRoutes    *gin.RouterGroup
+	admsRoutes        *gin.RouterGroup
 )
 
 func init() {
@@ -51,6 +52,11 @@ func SetupRoutesMiddleware() {
 	adminRoutes = Router.Group(SERVICE_BASE_PATH + "/admin")
 	adminRoutes.Use(middleware.LogRequest())
 	adminRoutes.Use(middleware.AuthorizeSession(models.ROLE_SUPERADMIN))
+
+	// Devices call fixed /iclock paths baked into their firmware, so this group ignores
+	// SERVICE_BASE_PATH. It logs to device_raw_messages instead of LogRequest.
+	admsRoutes = Router.Group("/iclock")
+	admsRoutes.Use(middleware.AuthorizeAdmsDevice())
 
 	internalRoutes = Router.Group(SERVICE_BASE_PATH + "/internal")
 	internalRoutes.Use(middleware.LogRequest())
@@ -94,6 +100,16 @@ func SetupGymRoutes() {
 	gymRoutes.GET("/v1/overdue", controllers.ListOverdue)
 	gymRoutes.GET("/v1/payments", controllers.ListPayments)
 
+	gymRoutes.GET("/v1/devices", controllers.ListDevices)
+	gymRoutes.POST("/v1/devices", controllers.CreateDevice)
+	gymRoutes.GET("/v1/devices/:deviceId", controllers.GetDevice)
+	gymRoutes.PATCH("/v1/devices/:deviceId", controllers.UpdateDevice)
+	gymRoutes.DELETE("/v1/devices/:deviceId", controllers.DeleteDevice)
+	gymRoutes.GET("/v1/devices/:deviceId/commands", controllers.ListDeviceCommands)
+	gymRoutes.POST("/v1/devices/:deviceId/commands", controllers.CreateDeviceCommand)
+
+	gymRoutes.GET("/v1/checkins", controllers.ListCheckins)
+
 	gymRoutes.GET("/v1/staff", controllers.ListStaff)
 	gymRoutes.POST("/v1/staff", controllers.CreateStaff)
 	gymRoutes.PATCH("/v1/staff/:userId", controllers.SetStaffActive)
@@ -105,6 +121,12 @@ func SetupAdminRoutes() {
 	adminRoutes.GET("/v1/gyms", controllers.AdminListGyms)
 	adminRoutes.POST("/v1/gyms", controllers.AdminCreateGym)
 	adminRoutes.PATCH("/v1/gyms/:gymId", controllers.AdminUpdateGym)
+
+}
+
+func SetupAdmsRoutes() {
+
+	admsRoutes.Any("/*path", controllers.AdmsDispatch)
 
 }
 
@@ -122,6 +144,7 @@ func SetupAllRoutes() {
 	SetupAuthRoutes()
 	SetupGymRoutes()
 	SetupAdminRoutes()
+	SetupAdmsRoutes()
 	SetupInternalRoutes()
 
 }
