@@ -2,6 +2,10 @@ package models
 
 import "time"
 
+// DEVICE_ONLINE_WINDOW is how recently a device must have polled to count as online: several
+// missed heartbeats, so one slow request does not flap the status.
+const DEVICE_ONLINE_WINDOW = 2 * time.Minute
+
 type Device struct {
 	Id              int        `json:"id"`
 	SerialNumber    string     `json:"serialNumber"`

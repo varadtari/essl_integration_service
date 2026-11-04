@@ -109,6 +109,7 @@ func SetupGymRoutes() {
 	gymRoutes.POST("/v1/devices/:deviceId/commands", controllers.CreateDeviceCommand)
 
 	gymRoutes.GET("/v1/checkins", controllers.ListCheckins)
+	gymRoutes.GET("/v1/events/stream", controllers.StreamLiveEvents)
 
 	gymRoutes.GET("/v1/staff", controllers.ListStaff)
 	gymRoutes.POST("/v1/staff", controllers.CreateStaff)

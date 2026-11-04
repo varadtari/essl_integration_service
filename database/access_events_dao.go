@@ -74,8 +74,8 @@ SELECT m."devicePin", m.id, ms."startDate"::text, ms."endDate"::text
 	return terms, nil
 }
 
-// InsertEvents stores a batch, skipping punches already stored, and returns the ids of the rows
-// actually inserted so only new check-ins are announced.
+// InsertEvents stores a batch, skipping punches already stored, and announces the rows actually
+// inserted to the gym's live streams in the same transaction.
 func (d *accessEventDb) InsertEvents(ctx context.Context, gymId int, deviceId int, events []models.NewAccessEvent) (insertedIds []int64, appError *models.ApplicationError) {
 
 	if len(events) == 0 {
@@ -105,7 +105,14 @@ RETURNING id`, gymId, deviceId, e.MemberId, e.Pin, e.PunchedAt, e.PunchStatus, e
 			}
 			insertedIds = append(insertedIds, id)
 		}
-		return results.Close()
+		if err := results.Close(); err != nil {
+			return err
+		}
+
+		if len(insertedIds) == 0 {
+			return nil
+		}
+		return notifyTx(ctx, tx, checkinsEvent(gymId, insertedIds))
 	})
 
 	if err != nil {

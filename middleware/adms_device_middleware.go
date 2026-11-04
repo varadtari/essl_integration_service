@@ -120,7 +120,7 @@ func AuthorizeAdmsDevice() gin.HandlerFunc {
 			return
 		}
 
-		if appError := database.DevDb.TouchDevice(ctx, device.Id, remoteIp, c.Query("pushver")); appError != nil {
+		if _, appError := database.DevDb.TouchDevice(ctx, device.GymId, device.Id, remoteIp, c.Query("pushver"), models.DEVICE_ONLINE_WINDOW); appError != nil {
 			logger.Log.Error("adms_touch_failed", zap.String("serial", serial), zap.String("error", appError.Message.ErrorMessage))
 		}
 

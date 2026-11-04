@@ -24,10 +24,6 @@ func init() {
 	DEVICE_SERVICE_ERROR_BASE_CODE = utils.ServiceErrorBaseCode + DEVICE_SERVICE_BYTE3_VALUE
 }
 
-// DEVICE_ONLINE_WINDOW is how recently a device must have polled to count as online: several
-// missed heartbeats, so one slow request does not flap the status.
-const DEVICE_ONLINE_WINDOW = 2 * time.Minute
-
 const COMMAND_HISTORY_LIMIT = 50
 
 var serialPattern = regexp.MustCompile(`^[A-Z0-9-]{4,64}$`)
@@ -40,7 +36,7 @@ func normalizeSerial(raw string) (string, bool) {
 }
 
 func withOnline(device models.Device, now time.Time) models.Device {
-	device.Online = device.LastSeenAt != nil && now.Sub(*device.LastSeenAt) < DEVICE_ONLINE_WINDOW
+	device.Online = device.LastSeenAt != nil && now.Sub(*device.LastSeenAt) < models.DEVICE_ONLINE_WINDOW
 	return device
 }
 

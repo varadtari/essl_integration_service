@@ -50,6 +50,22 @@ go test ./...
 
 Without `TEST_DB_NAME` the database tests are skipped.
 
+## Live events
+
+`GET /v1/events/stream` is a Server-Sent Events stream for the gym's dashboard:
+
+| Event | Data | When |
+|---|---|---|
+| `ready` | `{gymId}` | On connect |
+| `checkin` | a check-in, as in `/v1/checkins` | A new punch is stored |
+| `device` | `{deviceId}` | A device connects for the first time or after being offline |
+| `refresh` | `{}` | Events may have been missed (big backlog, slow client, listener reconnect): reload |
+| `signedout` | `{}` | The user was deactivated; the stream then closes |
+
+Punches are announced with `pg_notify` inside the insert transaction, so only committed rows are
+announced. One `LISTEN` connection per process relays them to the open streams of that gym.
+Behind a reverse proxy, disable response buffering for this path.
+
 ## Device simulator
 
 `cmd/devsim` speaks ADMS like a real terminal, for development without hardware and for load
@@ -83,7 +99,7 @@ dates are `YYYY-MM-DD` calendar days in the gym's timezone.
 | `/v1/auth` | anyone | `POST /login`, `POST /logout` |
 | `/v1/me` | any session | `GET` |
 | gym | owner, staff | `GET /v1/dashboard/summary`, `GET/PATCH /v1/gym`, `GET/POST /v1/plans`, `PATCH /v1/plans/:planId`, `GET/POST /v1/members`, `GET/PATCH/DELETE /v1/members/:memberId`, `POST /v1/members/:memberId/renew`, `GET /v1/overdue`, `GET /v1/payments?month=YYYY-MM`, `GET/POST /v1/staff`, `PATCH /v1/staff/:userId` |
-| gym (devices) | owner, staff | `GET/POST /v1/devices`, `GET/PATCH/DELETE /v1/devices/:deviceId`, `GET/POST /v1/devices/:deviceId/commands`, `GET /v1/checkins?from&to&memberId&deviceId&verdict&limit&before` |
+| gym (devices) | owner, staff | `GET/POST /v1/devices`, `GET/PATCH/DELETE /v1/devices/:deviceId`, `GET/POST /v1/devices/:deviceId/commands`, `GET /v1/checkins?from&to&memberId&deviceId&verdict&limit&before`, `GET /v1/events/stream` (Server-Sent Events) |
 | `/iclock` | devices (by registered `SN`) | ADMS: see [docs/adms-protocol.md](docs/adms-protocol.md) |
 | `/admin` | superadmin | `GET/POST /v1/gyms`, `PATCH /v1/gyms/:gymId` |
 | `/internal` | `x-api-key` | `POST /v1/superadmins` |

@@ -18,6 +18,7 @@ import (
 	"essl_integration_service/database"
 	"essl_integration_service/logger"
 	"essl_integration_service/models"
+	"essl_integration_service/services"
 )
 
 var (
@@ -78,6 +79,13 @@ func StartApp() {
 		Handler:           Router,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+
+	// Live events: one LISTEN connection relays pg_notify to the open dashboard streams. On
+	// shutdown the hub closes every stream, otherwise Shutdown would wait out each open tab.
+	liveCtx, stopLive := context.WithCancel(context.Background())
+	defer stopLive()
+	go services.StartLiveEvents(liveCtx)
+	server.RegisterOnShutdown(services.Hub.Close)
 
 	go func() {
 

@@ -19,7 +19,7 @@ type deviceDbInterface interface {
 	UpdateDevice(ctx context.Context, gymId int, deviceId int, name *string) (appError *models.ApplicationError)
 	SoftDeleteDevice(ctx context.Context, gymId int, deviceId int) (appError *models.ApplicationError)
 	GetAdmsDevice(ctx context.Context, serialNumber string) (device *models.AdmsDevice, appError *models.ApplicationError)
-	TouchDevice(ctx context.Context, deviceId int, remoteIp string, pushVersion string) (appError *models.ApplicationError)
+	TouchDevice(ctx context.Context, gymId int, deviceId int, remoteIp string, pushVersion string, onlineWindow time.Duration) (cameOnline bool, appError *models.ApplicationError)
 	SaveStamp(ctx context.Context, deviceId int, table string, stamp string) (appError *models.ApplicationError)
 	SaveFirmware(ctx context.Context, deviceId int, firmware string) (appError *models.ApplicationError)
 }
@@ -146,16 +146,33 @@ SELECT d.id, d."gymId", d."serialNumber", g."timezone", g."graceDays", d."attSta
 }
 
 // TouchDevice records that the device is alive. It runs on every /iclock request, so it is a
-// single-row update with no reads.
-func (d *deviceDb) TouchDevice(ctx context.Context, deviceId int, remoteIp string, pushVersion string) (appError *models.ApplicationError) {
+// single-row update. When the device had been silent for longer than onlineWindow (or never
+// connected), it also announces that the device came online.
+func (d *deviceDb) TouchDevice(ctx context.Context, gymId int, deviceId int, remoteIp string, pushVersion string, onlineWindow time.Duration) (cameOnline bool, appError *models.ApplicationError) {
 
-	_, err := dbPool.Exec(ctx, `UPDATE devices SET "lastSeenAt"=$2, "lastIp"=$3, "pushVersion"=COALESCE(NULLIF($4,''),"pushVersion") WHERE id=$1`,
-		deviceId, time.Now(), remoteIp, pushVersion)
+	err := withTx(ctx, func(tx pgx.Tx) error {
+		var previous *time.Time
+		err := tx.QueryRow(ctx, `
+UPDATE devices d SET "lastSeenAt"=NOW(), "lastIp"=$2, "pushVersion"=COALESCE(NULLIF($3,''),d."pushVersion")
+  FROM (SELECT "lastSeenAt" FROM devices WHERE id=$1 FOR UPDATE) prev
+ WHERE d.id=$1
+RETURNING prev."lastSeenAt"`, deviceId, remoteIp, pushVersion).Scan(&previous)
+		if err != nil {
+			return err
+		}
+
+		cameOnline = previous == nil || time.Since(*previous) > onlineWindow
+		if !cameOnline {
+			return nil
+		}
+		return notifyTx(ctx, tx, models.LiveEvent{Type: models.LIVE_EVENT_DEVICE, GymId: gymId, DeviceId: deviceId})
+	})
+
 	if err != nil {
-		return renderDaoError(ctx, DEVICES_DAO_ERROR_BASE_CODE+8, "TouchDevice", err, "Could not update device")
+		return false, renderDaoError(ctx, DEVICES_DAO_ERROR_BASE_CODE+8, "TouchDevice", err, "Could not update device")
 	}
 
-	return nil
+	return cameOnline, nil
 }
 
 var stampColumns = map[string]string{"ATTLOG": `"attStamp"`, "OPERLOG": `"opStamp"`, "ATTPHOTO": `"photoStamp"`}
