@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: najah_ci
+          POSTGRES_PASSWORD: najah_ci
+          POSTGRES_DB: najah_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U najah_ci -d najah_test"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      DB_USER: najah_ci
+      DB_PASSWORD: najah_ci
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: najah_test
+      TEST_DB_NAME: najah_test
+      DB_SSL_MODE: disable
+      JWT_SECRET: ci-only-secret-that-is-long-enough-for-hs256
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Install golang-migrate
+        run: |
+          curl -sSL https://github.com/golang-migrate/migrate/releases/download/v4.19.0/migrate.linux-amd64.tar.gz | tar xz migrate
+          sudo mv migrate /usr/local/bin/
+      - name: Migrate (up, down, up)
+        run: |
+          URL="postgres://najah_ci:najah_ci@localhost:5432/najah_test?sslmode=disable"
+          migrate -database "$URL" -path database/migrations up
+          migrate -database "$URL" -path database/migrations down -all
+          migrate -database "$URL" -path database/migrations up
+      - name: Vet
+        run: |
+          test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+          go vet ./...
+      - name: Test
+        run: go test ./... -count=1 -timeout 300s
+      - name: Build images
+        run: |
+          docker build -t essl_integration_service:ci .
+          docker build -f Dockerfile.migrate -t essl_integration_service-migrate:ci .

@@ -1,0 +1,12 @@
+# Never send secrets or local state into a build context.
+.env
+.env.*
+!.env.example
+*.ini
+.decrypted*
+.git
+deploy/.env
+deploy/backups
+goserver
+*.test
+*.out

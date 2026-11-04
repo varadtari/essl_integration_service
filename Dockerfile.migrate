@@ -1,0 +1,4 @@
+# The database migrations as an image, so the server runs them without a checkout of the repo.
+FROM migrate/migrate:v4.19.0
+COPY database/migrations /migrations
+ENTRYPOINT ["migrate", "-path", "/migrations"]

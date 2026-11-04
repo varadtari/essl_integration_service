@@ -1,0 +1,112 @@
+# Production stack: one VM running Caddy (HTTPS + routing), the Go service, the portal and
+# Postgres. The same file runs locally for testing; only deploy/.env differs.
+#
+#   docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d
+#
+name: najah
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      TZ: UTC
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [internal]
+    # No published port: only the service reaches the database.
+
+  # Runs pending migrations and exits; the API starts only after it succeeds.
+  migrate:
+    image: ${MIGRATE_IMAGE:-essl_integration_service-migrate:local}
+    command: ["-database", "postgres://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}?sslmode=disable", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+    restart: "no"
+
+  api:
+    image: ${API_IMAGE:-essl_integration_service:local}
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      ENV: ${ENV:-production}
+      SERVICE_NAME: essl_integration_service
+      SERVER_PORT: "8001"
+      SERVICE_BASE_PATH: ""
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME}
+      # Postgres is only reachable on the private compose network.
+      DB_SSL_MODE: disable
+      WEB_ORIGIN: https://${APP_DOMAIN}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_SECURE: "true"
+      EXPOSE_ERROR_DETAILS: "false"
+      API_KEY: ${API_KEY}
+      # Only Caddy may set X-Forwarded-For; device and user IPs are recorded.
+      TRUSTED_PROXIES: 172.30.0.0/24
+      ADMS_LOG_HEARTBEATS: ${ADMS_LOG_HEARTBEATS:-false}
+      DD_TRACE_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8001/v1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks: [internal]
+
+  portal:
+    image: ${PORTAL_IMAGE:-najah_portal:local}
+    restart: unless-stopped
+    networks: [internal]
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      portal:
+        condition: service_started
+    ports:
+      - "80:80"
+      - "443:443"
+      # Plain-HTTP ADMS for devices whose firmware cannot do TLS (see docs/deployment.md).
+      - "${ADMS_HTTP_PORT:-8081}:${ADMS_HTTP_PORT:-8081}"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN}
+      ADMS_DOMAIN: ${ADMS_DOMAIN}
+      ADMS_HTTP_PORT: ${ADMS_HTTP_PORT:-8081}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      internal:
+        ipv4_address: 172.30.0.10
+
+networks:
+  internal:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

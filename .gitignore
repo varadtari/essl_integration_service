@@ -19,3 +19,7 @@ main
 
 .decrypted
 .decrypted~*
+
+# Deployment secrets and local backups
+deploy/.env
+deploy/backups/

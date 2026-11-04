@@ -108,6 +108,12 @@ Owner-only within the gym group: gym settings, plans, staff, deleting members, a
 removing devices, and device commands other than opening the door. The gym a
 request acts on always comes from the session, never from the URL or body.
 
+## Deployment
+
+`deploy/` holds the production stack (Caddy, api, portal, Postgres) and the backup, restore and
+admin-bootstrap scripts. See [docs/deployment.md](docs/deployment.md), including how to run the
+whole stack locally first.
+
 ## Migrations
 
 ```sh

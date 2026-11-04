@@ -1,0 +1,54 @@
+{
+	# Let's Encrypt account for real domains; *.localhost gets Caddy's local CA instead.
+	email {$ACME_EMAIL}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+# The portal and its API on one origin, so the session cookie needs no CORS.
+{$APP_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	# Ops endpoints are reached only from the server itself (deploy/bootstrap-admin.sh).
+	handle /api/internal/* {
+		respond 404
+	}
+
+	handle_path /api/* {
+		# flush_interval -1 streams responses as written: the live check-in feed is SSE.
+		reverse_proxy api:8001 {
+			flush_interval -1
+		}
+	}
+
+	handle {
+		reverse_proxy portal:80
+	}
+}
+
+# Devices over HTTPS, when the firmware supports it.
+{$ADMS_DOMAIN} {
+	import security_headers
+	handle /iclock/* {
+		reverse_proxy api:8001
+	}
+	respond 404
+}
+
+# Devices over plain HTTP. ADMS sends the serial as its only credential, so this port carries
+# nothing but /iclock; registration, rate limiting and the raw log protect it.
+:{$ADMS_HTTP_PORT} {
+	handle /iclock/* {
+		reverse_proxy api:8001
+	}
+	respond 404
+}
