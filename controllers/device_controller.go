@@ -154,6 +154,22 @@ func ListDeviceCommands(c *gin.Context) {
 	respondSuccess(c, http.StatusOK, commands)
 }
 
+func SyncDeviceMembers(c *gin.Context) {
+
+	params, ok := bindDevicePath(c, "SyncDeviceMembers", DEVICE_CONTROLLER_ERROR_BASE_CODE+10)
+	if !ok {
+		return
+	}
+
+	apiError, queued := services.SyncDeviceMembers(getContextFromGinContext(c), getSession(c), params.DeviceId)
+	if apiError != nil {
+		respondApiError(c, apiError)
+		return
+	}
+
+	respondSuccess(c, http.StatusOK, map[string]int{"commandsQueued": queued})
+}
+
 func ListCheckins(c *gin.Context) {
 
 	ctx := getContextFromGinContext(c)

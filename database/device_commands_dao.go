@@ -3,6 +3,7 @@ package database
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
@@ -56,8 +57,12 @@ func (d *deviceCommandDb) TakePendingCommands(ctx context.Context, deviceId int,
 	err := withTx(ctx, func(tx pgx.Tx) error {
 
 		if _, err := tx.Exec(ctx, `
-UPDATE device_commands SET "status"='failed', "finishedAt"=NOW()
- WHERE "deviceId"=$1 AND "status"='sent' AND "attempts" >= $2 AND "sentAt" < NOW() - $3::interval`,
+WITH given_up AS (
+  UPDATE device_commands SET "status"='failed', "finishedAt"=NOW()
+   WHERE "deviceId"=$1 AND "status"='sent' AND "attempts" >= $2 AND "sentAt" < NOW() - $3::interval
+  RETURNING id, "memberId")
+UPDATE member_device_access a SET "failedAttempts"=a."failedAttempts"+1, "lastError"='no answer from the device'
+  FROM given_up g WHERE a."memberId"=g."memberId" AND a."deviceId"=$1 AND a."lastCommandId"=g.id`,
 			deviceId, maxAttempts, resendAfter.String()); err != nil {
 			return err
 		}
@@ -104,13 +109,37 @@ func (d *deviceCommandDb) CompleteCommands(ctx context.Context, deviceId int, re
 			if result.Return < 0 {
 				status = models.COMMAND_STATUS_FAILED
 			}
-			tag, err := tx.Exec(ctx, `
+			var memberId *int
+			var targetState *string
+			err := tx.QueryRow(ctx, `
 UPDATE device_commands SET "status"=$3, "returnCode"=$4, "finishedAt"=NOW()
- WHERE id=$1 AND "deviceId"=$2 AND "status" IN ('sent','queued')`, result.Id, deviceId, status, result.Return)
+ WHERE id=$1 AND "deviceId"=$2 AND "status" IN ('sent','queued')
+RETURNING "memberId", "targetState"::text`, result.Id, deviceId, status, result.Return).Scan(&memberId, &targetState)
+			if err == pgx.ErrNoRows {
+				continue
+			}
 			if err != nil {
 				return err
 			}
-			updated += int(tag.RowsAffected())
+			updated++
+
+			// A user command's answer is what the device now has. Applied only while it is still
+			// the pair's latest command, so a late answer cannot undo a newer state.
+			if memberId == nil || targetState == nil {
+				continue
+			}
+			if status == models.COMMAND_STATUS_ACKED {
+				_, err = tx.Exec(ctx, `
+UPDATE member_device_access SET "actualState"=$3, "failedAttempts"=0, "lastError"=NULL
+ WHERE "memberId"=$1 AND "deviceId"=$2 AND "lastCommandId"=$4`, *memberId, deviceId, *targetState, result.Id)
+			} else {
+				_, err = tx.Exec(ctx, `
+UPDATE member_device_access SET "failedAttempts"="failedAttempts"+1, "lastError"=$3
+ WHERE "memberId"=$1 AND "deviceId"=$2 AND "lastCommandId"=$4`, *memberId, deviceId, fmt.Sprintf("device returned %d", result.Return), result.Id)
+			}
+			if err != nil {
+				return err
+			}
 		}
 		return nil
 	})

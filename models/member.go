@@ -29,6 +29,8 @@ type MemberListItem struct {
 	Status    string  `json:"status"`
 	// DaysToExpiry is negative once expired: -3 means it expired three days ago.
 	DaysToExpiry *int `json:"daysToExpiry"`
+	// Access is whether the gym's devices let the member in (list endpoint only).
+	Access *MemberAccessSummary `json:"access,omitempty"`
 }
 
 type CreateMemberRequestBody struct {

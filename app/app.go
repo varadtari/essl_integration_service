@@ -85,6 +85,10 @@ func StartApp() {
 	liveCtx, stopLive := context.WithCancel(context.Background())
 	defer stopLive()
 	go services.StartLiveEvents(liveCtx)
+
+	// Expiry: every gym is reconciled at start and then every few minutes, so members are
+	// removed from devices once their term (plus grace) ends, even with nobody signed in.
+	go services.StartAccessScheduler(liveCtx)
 	server.RegisterOnShutdown(services.Hub.Close)
 
 	go func() {

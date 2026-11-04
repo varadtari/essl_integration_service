@@ -61,6 +61,7 @@ services:
       # Only Caddy may set X-Forwarded-For; device and user IPs are recorded.
       TRUSTED_PROXIES: 172.30.0.0/24
       ADMS_LOG_HEARTBEATS: ${ADMS_LOG_HEARTBEATS:-false}
+      ADMS_SEND_VALIDITY: ${ADMS_SEND_VALIDITY:-false}
       DD_TRACE_ENABLED: "false"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8001/v1/health"]

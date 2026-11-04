@@ -4,7 +4,7 @@
 //
 //	go run ./cmd/devsim -server http://localhost:8001 -sn DEVSIM0001
 //
-// then type: punch <pin> [face|finger|card|password] · offline · online · status · quit
+// then type: punch <pin> [face|finger|card|password] · enroll <pin> · users · offline · online · status · quit
 //
 // Load test, many devices (registered through the portal API with a gym owner's login):
 //
@@ -40,12 +40,13 @@ func main() {
 	duration := flag.Duration("duration", time.Minute, "load mode: how long to run")
 	punchEvery := flag.Duration("punch-every", 30*time.Second, "load mode: average gap between punches per device")
 	maxPin := flag.Int("max-pin", 50, "load mode: punches use pins 1..max-pin")
+	enforce := flag.Bool("enforce", true, "interactive: refuse punches for pins the portal has not put on the device (like a real terminal)")
 	flag.Parse()
 
 	if *load > 0 {
 		os.Exit(runLoad(*server, *prefix, *load, *register, *heartbeat, *duration, *punchEvery, *maxPin))
 	}
-	os.Exit(runInteractive(*server, *serial, *heartbeat))
+	os.Exit(runInteractive(*server, *serial, *heartbeat, *enforce))
 }
 
 var verifyNames = map[string]int{
@@ -53,8 +54,9 @@ var verifyNames = map[string]int{
 	"card": devsim.VerifyCard, "password": devsim.VerifyPassword, "pw": devsim.VerifyPassword,
 }
 
-func runInteractive(server string, serial string, heartbeat time.Duration) int {
+func runInteractive(server string, serial string, heartbeat time.Duration, enforce bool) int {
 	device := devsim.New(server, serial)
+	device.Enforce = enforce
 	device.OnCommand = func(id int64, command string) int {
 		fmt.Printf("\n<- command %d: %s\n> ", id, command)
 		return 0
@@ -66,7 +68,10 @@ func runInteractive(server string, serial string, heartbeat time.Duration) int {
 		return 1
 	}
 	fmt.Printf("%s connected to %s; polling every %s\n", serial, server, heartbeat)
-	fmt.Println("commands: punch <pin> [face|finger|card|password] · offline · online · status · quit")
+	fmt.Println("commands: punch <pin> [face|finger|card|password] · enroll <pin> · users · offline · online · status · quit")
+	if enforce {
+		fmt.Println("enforcing: only members the portal put on this device can punch (-enforce=false to allow any pin)")
+	}
 
 	go func() {
 		for range time.Tick(heartbeat) {
@@ -98,6 +103,10 @@ func runInteractive(server string, serial string, heartbeat time.Duration) int {
 				verify = v
 			}
 			if err := device.Punch(fields[1], verify); err != nil {
+				if err == devsim.ErrRefused {
+					fmt.Println("✗ door stays shut: this pin is not on the device (not a member, or membership expired)")
+					continue
+				}
 				fmt.Println("upload failed, kept for retry:", err)
 				continue
 			}
@@ -105,6 +114,24 @@ func runInteractive(server string, serial string, heartbeat time.Duration) int {
 				fmt.Printf("stored offline (%d waiting)\n", device.Unsent())
 			} else {
 				fmt.Println("sent")
+			}
+		case "enroll":
+			if len(fields) < 2 {
+				fmt.Println("usage: enroll <pin>")
+				continue
+			}
+			if err := device.Enroll(fields[1]); err != nil {
+				fmt.Println(err)
+				continue
+			}
+			fmt.Println("face enrolled and uploaded")
+		case "users":
+			users := device.Users()
+			if len(users) == 0 {
+				fmt.Println("no users on the device")
+			}
+			for pin, name := range users {
+				fmt.Printf("  %s  %s  (%d templates)\n", pin, name, len(device.Templates(pin)))
 			}
 		case "offline":
 			device.SetOnline(false)

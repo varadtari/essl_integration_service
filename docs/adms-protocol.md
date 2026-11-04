@@ -54,8 +54,14 @@ A failure to store an upload answers 503, so the device keeps the batch and retr
    `DATA QUERY ATTLOG StartTime=..\tEndTime=..` re-sends punches.
 7. **Refused attempts.** How an expired or unknown face is reported. ATTLOG carries accepted
    punches only; refusals may come as OPERLOG, `rtlog`, or photos on `fdata`.
-8. **Block/unblock and user sync** (next branch): `DATA UPDATE USERINFO` / `DATA DELETE USERINFO`,
-   access groups or time zones for blocking, user validity dates, remote face enrolment.
+8. **User sync.** `DATA UPDATE USERINFO PIN=..\tName=..\tPri=0\tPasswd=\tCard=\tGrp=1\tTZ=0000000000000000`
+   creates the user, `DATA DELETE USERINFO PIN=..` removes them (and their templates on the
+   device). Check both are answered with `Return=0` and take effect.
+8a. **Templates.** After enrolling a face at the device, an OPERLOG upload carries `FACE`,
+   `BIODATA` or `BIOPHOTO` lines for that pin. Check they arrive, and that replaying one as
+   `DATA UPDATE <line>` after a delete makes the face match again without enrolling.
+8b. **Validity dates** (`ADMS_SEND_VALIDITY=true`): whether `StartDatetime` / `EndDatetime` on
+   USERINFO are accepted and make the device refuse an expired user while offline.
 9. **HTTPS** support and the device's behaviour on certificate errors.
 
 ## Reading the raw log
@@ -79,6 +85,33 @@ SELECT "path", COUNT(*) FROM device_raw_messages GROUP BY 1 ORDER BY 2 DESC;
 ```
 
 Rows older than 30 days can be removed with `database.RawDb.PurgeRawMessages`.
+
+## Door access (expiry)
+
+Members are kept on the gym's devices by a reconciler (`services/access_sync_service.go`):
+
+- For each member × device, the **desired** state comes from the membership: on the device
+  while the latest term's end date plus the gym's grace days has not passed, otherwise blocked;
+  a gym with *block on expiry* off keeps everyone on. Deleted members are removed.
+- The **actual** state changes only when the device acknowledges a command, so a device that is
+  offline stays "syncing" until it catches up.
+- **Block = remove the user** from the device (a device cannot match a face it does not have).
+  **Unblock = create the user again and replay their saved templates**, captured from the
+  device's OPERLOG upload when they enrolled, so renewing does not mean enrolling again.
+- It runs right after adding, renewing, editing or deleting a member, after gym settings change,
+  when a device is added, and every 5 minutes for every gym (expiries, and anything an outage
+  left behind). Only the latest state per member and device is sent: queued commands are
+  superseded, so a device offline through an expiry and a renewal only receives the renewal.
+- A command the device refuses is retried on each sweep up to 5 times; then the member shows
+  **error** in the members list until something changes.
+- Names are stripped of tabs and newlines (they separate fields and commands) and cut to 24
+  characters. Members are always ordinary users (`Pri=0`), never device admins.
+
+**Device admins must use pins from 9000 up.** Member pins start at 1, and the reconciler would
+overwrite a device user that has a member's pin.
+
+Until the device confirms ATTLOG refusals (item 7), a refused member leaves no check-in; a
+member the device still let in shows as *allowed_but_expired*, meaning a block has not landed.
 
 ## Verdicts
 

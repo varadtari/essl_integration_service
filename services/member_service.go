@@ -81,9 +81,21 @@ func ListMembers(ctx context.Context, session models.Session, query models.Membe
 		return fromDaoError(ctx, "ListMembers", appError), nil
 	}
 
+	accessRows, devices, appError := database.AccDb.AccessSummaries(ctx, gc.gymId)
+	if appError != nil {
+		return fromDaoError(ctx, "ListMembers", appError), nil
+	}
+	byMember := map[int][]models.DeviceAccess{}
+	for _, a := range accessRows {
+		byMember[a.MemberId] = append(byMember[a.MemberId], a)
+	}
+
 	items := make([]models.MemberListItem, 0, len(rows))
 	for _, row := range rows {
-		items = append(items, toMemberListItem(row, gc.today))
+		item := toMemberListItem(row, gc.today)
+		summary := summarizeAccess(byMember[row.Id], devices)
+		item.Access = &summary
+		items = append(items, item)
 	}
 
 	return nil, items
@@ -164,6 +176,9 @@ func CreateMember(ctx context.Context, session models.Session, input models.Crea
 		return fromDaoError(ctx, "CreateMember", appError), nil
 	}
 
+	// Puts the new member on the gym's devices so their face can be enrolled under this pin.
+	syncMemberAccess(ctx, gc.gymId, memberId)
+
 	item := toMemberListItem(models.MemberRow{Id: memberId, DevicePin: devicePin, Name: name, Phone: phone, StartDate: &term.StartDate, EndDate: &term.EndDate}, gc.today)
 	return nil, &item
 }
@@ -196,6 +211,9 @@ func RenewMember(ctx context.Context, session models.Session, memberId int, inpu
 		}
 		return fromDaoError(ctx, "RenewMember", appError), nil
 	}
+
+	// An expired member gets door access back at once, not at the next sweep.
+	syncMemberAccess(ctx, gc.gymId, memberId)
 
 	row.StartDate, row.EndDate = &term.StartDate, &term.EndDate
 	item := toMemberListItem(*row, gc.today)
@@ -234,6 +252,9 @@ func UpdateMember(ctx context.Context, session models.Session, memberId int, inp
 		return fromDaoError(ctx, "UpdateMember", appError), nil
 	}
 
+	// A new name is sent to the devices.
+	syncMemberAccess(ctx, gc.gymId, memberId)
+
 	item := toMemberListItem(*row, gc.today)
 	return nil, &item
 }
@@ -252,6 +273,8 @@ func DeleteMember(ctx context.Context, session models.Session, memberId int) *mo
 	if appError := database.MemDb.SoftDeleteMember(ctx, gymId, memberId); appError != nil {
 		return fromDaoError(ctx, "DeleteMember", appError)
 	}
+
+	syncMemberAccess(ctx, gymId, memberId)
 
 	return nil
 }

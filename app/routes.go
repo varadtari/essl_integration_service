@@ -107,6 +107,7 @@ func SetupGymRoutes() {
 	gymRoutes.DELETE("/v1/devices/:deviceId", controllers.DeleteDevice)
 	gymRoutes.GET("/v1/devices/:deviceId/commands", controllers.ListDeviceCommands)
 	gymRoutes.POST("/v1/devices/:deviceId/commands", controllers.CreateDeviceCommand)
+	gymRoutes.POST("/v1/devices/:deviceId/sync", controllers.SyncDeviceMembers)
 
 	gymRoutes.GET("/v1/checkins", controllers.ListCheckins)
 	gymRoutes.GET("/v1/events/stream", controllers.StreamLiveEvents)

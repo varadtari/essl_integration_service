@@ -62,7 +62,10 @@ func TestSimulatedDeviceEndToEnd(t *testing.T) {
 	require.Equal(t, http.StatusCreated, call(t, "POST", commandsPath, map[string]any{"kind": "open_door"}, withCookie(gym.owner)).Code)
 	received, err := device.Poll()
 	require.NoError(t, err)
-	assert.Equal(t, []string{"CONTROL DEVICE 01010105"}, received)
+	// The member added above is put on the device first (queued earlier), then the door opens.
+	require.Len(t, received, 2)
+	assert.True(t, strings.HasPrefix(received[0], "DATA UPDATE USERINFO PIN="+pin+"\t"))
+	assert.Equal(t, "CONTROL DEVICE 01010105", received[1])
 	assert.Equal(t, "acked", call(t, "GET", commandsPath, nil, withCookie(gym.owner)).messageList()[0].(map[string]any)["status"])
 
 	// Re-pulling the last hour re-sends punches the server already has: nothing is duplicated.

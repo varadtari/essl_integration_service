@@ -73,7 +73,9 @@ tests. Register its serial in the portal first (Settings → Devices), then:
 
 ```sh
 go run ./cmd/devsim -sn DEVSIM0001
-> punch 3 face      # member with device pin 3 checks in
+> users             # who the portal has put on this device
+> enroll 3          # enrol pin 3's face (uploads the template)
+> punch 3 face      # member with device pin 3 checks in; refused if they are not on the device
 > offline           # punches are kept on the "device"
 > online            # ...and uploaded as a backlog
 ```
@@ -99,7 +101,7 @@ dates are `YYYY-MM-DD` calendar days in the gym's timezone.
 | `/v1/auth` | anyone | `POST /login`, `POST /logout` |
 | `/v1/me` | any session | `GET` |
 | gym | owner, staff | `GET /v1/dashboard/summary`, `GET/PATCH /v1/gym`, `GET/POST /v1/plans`, `PATCH /v1/plans/:planId`, `GET/POST /v1/members`, `GET/PATCH/DELETE /v1/members/:memberId`, `POST /v1/members/:memberId/renew`, `GET /v1/overdue`, `GET /v1/payments?month=YYYY-MM`, `GET/POST /v1/staff`, `PATCH /v1/staff/:userId` |
-| gym (devices) | owner, staff | `GET/POST /v1/devices`, `GET/PATCH/DELETE /v1/devices/:deviceId`, `GET/POST /v1/devices/:deviceId/commands`, `GET /v1/checkins?from&to&memberId&deviceId&verdict&limit&before`, `GET /v1/events/stream` (Server-Sent Events) |
+| gym (devices) | owner, staff | `GET/POST /v1/devices`, `GET/PATCH/DELETE /v1/devices/:deviceId`, `GET/POST /v1/devices/:deviceId/commands`, `POST /v1/devices/:deviceId/sync` (owner: resend all members), `GET /v1/checkins?from&to&memberId&deviceId&verdict&limit&before`, `GET /v1/events/stream` (Server-Sent Events) |
 | `/iclock` | devices (by registered `SN`) | ADMS: see [docs/adms-protocol.md](docs/adms-protocol.md) |
 | `/admin` | superadmin | `GET/POST /v1/gyms`, `PATCH /v1/gyms/:gymId` |
 | `/internal` | `x-api-key` | `POST /v1/superadmins` |

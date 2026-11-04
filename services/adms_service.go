@@ -145,6 +145,10 @@ func AdmsIngestAttLog(ctx context.Context, device models.AdmsDevice, stamp strin
 // user/template data, photos), advancing the stamp so the device does not resend it forever.
 func AdmsAcceptUpload(ctx context.Context, device models.AdmsDevice, table string, stamp string, body string) (string, *models.ApiError) {
 
+	if table == "OPERLOG" {
+		storeUploadedTemplates(ctx, device, body)
+	}
+
 	if appError := database.DevDb.SaveStamp(ctx, device.Id, table, stamp); appError != nil {
 		return "", fromDaoError(ctx, "AdmsAcceptUpload", appError)
 	}

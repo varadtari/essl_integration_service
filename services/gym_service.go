@@ -87,6 +87,9 @@ func UpdateGymAsAdmin(ctx context.Context, gymId int, input models.UpdateGymAdmi
 		return fromDaoError(ctx, "UpdateGymAsAdmin", appError), nil
 	}
 
+	// Grace days, blocking and the timezone all change who should be let in today.
+	syncGymAccess(ctx, gymId)
+
 	return nil, gym
 }
 

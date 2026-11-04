@@ -102,7 +102,33 @@ func CreateDevice(ctx context.Context, session models.Session, input models.Crea
 		return fromDaoError(ctx, "CreateDevice", appError), nil
 	}
 
+	// A new device gets every member who should be let in.
+	syncGymAccess(ctx, gymId)
+
 	return GetDevice(ctx, session, deviceId)
+}
+
+// SyncDeviceMembers forgets what the device was sent and sends every member again, e.g. after
+// the device was reset or replaced under the same serial. Returns the number of commands queued.
+func SyncDeviceMembers(ctx context.Context, session models.Session, deviceId int) (*models.ApiError, int) {
+
+	gymId, apiError := requireGym(ctx, session)
+	if apiError != nil {
+		return apiError, 0
+	}
+	if apiError := requireOwner(ctx, session); apiError != nil {
+		return apiError, 0
+	}
+	if _, appError := database.DevDb.GetDevice(ctx, gymId, deviceId); appError != nil {
+		return fromDaoError(ctx, "SyncDeviceMembers", appError), 0
+	}
+
+	if appError := database.AccDb.ResetDeviceHashes(ctx, gymId, deviceId); appError != nil {
+		return fromDaoError(ctx, "SyncDeviceMembers", appError), 0
+	}
+
+	queued, apiError := ReconcileGymAccess(ctx, gymId, 0)
+	return apiError, queued
 }
 
 func UpdateDevice(ctx context.Context, session models.Session, deviceId int, input models.UpdateDeviceRequestBody) (*models.ApiError, *models.Device) {
