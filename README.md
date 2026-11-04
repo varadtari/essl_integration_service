@@ -50,6 +50,12 @@ go test ./...
 
 Without `TEST_DB_NAME` the database tests are skipped.
 
+## Testing with a real device
+
+[docs/device-test-runbook.md](docs/device-test-runbook.md) is the checklist for a session with an
+eSSL AI Face Magnum: connecting it, member sync, enrolment, expiry blocking, renewal, offline
+backlog and commands, with the queries to check each step.
+
 ## Live events
 
 `GET /v1/events/stream` is a Server-Sent Events stream for the gym's dashboard:

@@ -40,6 +40,8 @@ A failure to store an upload answers 503, so the device keeps the batch and retr
 
 ## Assumptions to confirm (device spike)
 
+The step-by-step session with a real device is in [device-test-runbook.md](device-test-runbook.md).
+
 1. **Handshake.** The Magnum calls `GET /iclock/cdata?options=all` (PUSH 2.x), not the PUSH 3.x
    `/iclock/registry` + `/iclock/push` flow. Look at the first raw rows after setup.
 2. **ATTLOG fields.** `PIN \t YYYY-MM-DD HH:MM:SS \t status \t verify \t workcode …`, local time
